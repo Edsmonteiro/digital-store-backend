@@ -1,0 +1,43 @@
+name: Validacao do Back-end
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root_test_password
+          MYSQL_DATABASE: digital_store_test
+          MYSQL_USER: digital_store
+          MYSQL_PASSWORD: test_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      NODE_ENV: test
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_TEST_NAME: digital_store_test
+      DB_NAME: digital_store_test
+      DB_USER: digital_store
+      DB_PASSWORD: test_password
+      JWT_SECRET: github-action-tests-very-long-secret-string-2026
+      RUN_DB_TESTS: '1'
+      PUBLIC_BASE_URL: http://localhost:3333
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run check
+      - run: npm run db:migrate
+      - run: npm test

@@ -1,0 +1,42 @@
+{
+  "name": "digital-store-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "API REST da Digital Store, projeto final de Back-end da Digital College",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "db:migrate": "sequelize-cli db:migrate --config src/config/database.cjs --migrations-path migrations",
+    "db:migrate:undo": "sequelize-cli db:migrate:undo --config src/config/database.cjs --migrations-path migrations",
+    "db:seed": "sequelize-cli db:seed:all --config src/config/database.cjs --seeders-path seeders",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "check": "node scripts/check-syntax.js",
+    "test:integration": "jest --runInBand tests/integration.test.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.12.0",
+    "sequelize": "^6.37.5",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9",
+    "sequelize-cli": "^6.6.2",
+    "supertest": "^7.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "clearMocks": true
+  }
+}
