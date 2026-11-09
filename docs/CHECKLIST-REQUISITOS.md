@@ -19,6 +19,8 @@ As seis tabelas da atividade estão na migration `20261109000100-initial-tables.
 
 As ligações usam chaves estrangeiras. Ao excluir um produto, suas imagens, opções e vínculos com categorias também são removidos.
 
+A migration `20261109000300-search-indexes.js` acrescenta um índice de preço e confere se a categoria já possui índice pelo MySQL antes de criar outro. Nos filtros de opções, a API consulta os IDs informados de uma vez e depois verifica a combinação de valores.
+
 ## Endpoints
 
 **Usuários:** `GET /v1/user/:id`, `POST /v1/user`, `PUT /v1/user/:id`, `DELETE /v1/user/:id` e `POST /v1/user/token`.
@@ -49,6 +51,7 @@ A senha é armazenada com bcrypt e não é devolvida nas consultas.
 - Migration executada em MySQL 8.4.
 - Seed com produtos de exemplo.
 - Fluxo completo de usuários, categorias e produtos em testes de integração.
+- Busca por categoria e opções combinadas, paginação, parâmetros inválidos e índices testados com MySQL.
 - Testes automatizados com Jest e Supertest.
 - Swagger disponível em `/api-docs` e especificação em `/openapi.json`.
 - GitHub Actions executando migrations e testes.
