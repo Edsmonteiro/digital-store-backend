@@ -63,4 +63,126 @@ suite('Integração MySQL: CRUD completo e relacionamentos', () => {
     expect((await request(app).put(`/v1/user/${userId}`).set('Authorization', header).send({ firstname: 'Edson M.' })).status).toBe(204);
     expect((await request(app).delete(`/v1/user/${userId}`).set('Authorization', header)).status).toBe(204);
   }, 20000);
+
+  test('filtros combinados, paginação e erros de entrada', async () => {
+    const unique = Date.now().toString(36);
+    const email = `filtros-${unique}@example.com`;
+
+    const user = await request(app).post('/v1/user').send({
+      firstname: 'Teste', surname: 'Filtros', email,
+      password: 'SenhaSegura123!', confirmPassword: 'SenhaSegura123!'
+    });
+    expect(user.status).toBe(201);
+
+    const login = await request(app).post('/v1/user/token').send({
+      email, password: 'SenhaSegura123!'
+    });
+    expect(login.status).toBe(200);
+    const authorization = `Bearer ${login.body.token}`;
+
+    const category = await request(app).post('/v1/category')
+      .set('Authorization', authorization)
+      .send({ name: 'Teste filtros', slug: `filtros-${unique}`, use_in_menu: false });
+    expect(category.status).toBe(201);
+    const categoryId = category.body.id;
+
+    const createProduct = (name, suffix, price, sizes) =>
+      request(app).post('/v1/product')
+        .set('Authorization', authorization)
+        .send({
+          enabled: true, name, slug: `${suffix}-${unique}`,
+          stock: 5, price, price_with_discount: 0,
+          category_ids: [categoryId],
+          options: [
+            { title: 'Tamanho', shape: 'square', radius: '4px', type: 'text', values: sizes },
+            { title: 'Cor', shape: 'circle', radius: '50px', type: 'color', values: ['#111111', '#ffffff'] }
+          ]
+        });
+
+    const first = await createProduct('Camiseta de teste A', 'camiseta-a', 95, ['M', 'G']);
+    const second = await createProduct('Camiseta de teste B', 'camiseta-b', 115, ['P', 'GG']);
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+
+    const sizeA = first.body.options.find(option => option.title === 'Tamanho').id;
+    const colorA = first.body.options.find(option => option.title === 'Cor').id;
+    const sizeB = second.body.options.find(option => option.title === 'Tamanho').id;
+
+    // Os filtros devem apontar para o mesmo produto, e não apenas ter algum valor parecido.
+    const combined = await request(app).get(
+      `/v1/product/search?category_ids=${categoryId}&option[${sizeA}]=M&option[${colorA}]=%23111111`
+    );
+    expect(combined.status).toBe(200);
+    expect(combined.body.total).toBe(1);
+    expect(combined.body.data.map(item => item.id)).toEqual([first.body.id]);
+
+    const incompatible = await request(app).get(
+      `/v1/product/search?option[${sizeA}]=M&option[${sizeB}]=GG`
+    );
+    expect(incompatible.status).toBe(200);
+    expect(incompatible.body.total).toBe(0);
+    expect(incompatible.body.data).toEqual([]);
+
+    const page1 = await request(app).get(
+      `/v1/product/search?category_ids=${categoryId}&limit=1&page=1&fields=name,price`
+    );
+    const page2 = await request(app).get(
+      `/v1/product/search?category_ids=${categoryId}&limit=1&page=2&fields=name,price`
+    );
+    expect(page1.status).toBe(200);
+    expect(page2.status).toBe(200);
+    expect(page1.body.total).toBe(2);
+    expect(page2.body.total).toBe(2);
+    expect(page1.body.data).toHaveLength(1);
+    expect(page2.body.data).toHaveLength(1);
+    expect(page1.body.data[0].id).toBe(first.body.id);
+    expect(page2.body.data[0].id).toBe(second.body.id);
+    expect(Object.keys(page1.body.data[0]).sort()).toEqual(['id', 'name', 'price']);
+
+    const all = await request(app).get(
+      `/v1/product/search?category_ids=${categoryId}&limit=-1&page=20`
+    );
+    expect(all.status).toBe(200);
+    expect(all.body.page).toBe(1);
+    expect(all.body.total).toBe(2);
+    expect(all.body.data).toHaveLength(2);
+
+    for (const query of [
+      '?page=0', '?limit=0', '?fields=desconhecido',
+      '?price-range=200-100', '?option[0]=M',
+      `?option[${sizeA}]=M&option[${sizeA}]=G`
+    ]) {
+      const response = await request(app).get(`/v1/product/search${query}`);
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBeDefined();
+    }
+
+    expect((await request(app).get('/v1/product/999999999')).status).toBe(404);
+    expect((await request(app).post('/v1/product').send({
+      name: 'Sem token'
+    })).status).toBe(401);
+
+    for (const id of [first.body.id, second.body.id]) {
+      const removed = await request(app).delete(`/v1/product/${id}`)
+        .set('Authorization', authorization);
+      expect(removed.status).toBe(204);
+    }
+    expect((await request(app).delete(`/v1/category/${categoryId}`)
+      .set('Authorization', authorization)).status).toBe(204);
+    expect((await request(app).delete(`/v1/user/${user.body.id}`)
+      .set('Authorization', authorization)).status).toBe(204);
+  }, 30000);
+
+  test('índices usados nos filtros estão presentes no MySQL', async () => {
+    const [categoryIndex] = await sequelize.query(
+      'SHOW INDEX FROM product_categories'
+    );
+    const [priceIndex] = await sequelize.query(
+      "SHOW INDEX FROM products WHERE Key_name = 'idx_products_price'"
+    );
+    expect(categoryIndex.some(index =>
+      index.Column_name === 'category_id' && Number(index.Seq_in_index) === 1
+    )).toBe(true);
+    expect(priceIndex).toHaveLength(1);
+  });
 });
