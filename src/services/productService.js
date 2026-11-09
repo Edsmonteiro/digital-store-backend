@@ -167,52 +167,89 @@ async function verifyCategories(categoryIds, transaction) {
 }
 async function handleImages(productId, incoming, transaction, created, removed) {
   for (const input of incoming) {
-    if (input.id !== undefined) {
-      const current = await ProductImage.findOne({ where: { id: validate.id(input.id, 'images.id'), product_id: productId }, transaction });
-      if (!current) throw new ApiError(400, 'Imagem não pertence ao produto.');
-      if (input.deleted === true) {
-        await current.destroy({ transaction });
-        removed.push(current.path);
-        continue;
+    if (input.id === undefined) {
+      if (input.deleted) {
+        throw new ApiError(400, 'Imagem nova não pode ser excluída.');
       }
-      const updates = {};
-      if (input.content !== undefined) {
-        // Uma imagem existente só pode ser reutilizada se já pertencer ao produto.
-        const reusedLocal = typeof input.content === 'string' && input.content.startsWith('/media/');
-        const nextPath = await media.saveImage(input, created);
-        if (reusedLocal && nextPath !== current.path) {
-          const owned = await ProductImage.findOne({ where: { product_id: productId, path: nextPath }, transaction });
-          if (!owned) throw new ApiError(400, 'Imagem local informada não pertence a este produto.');
-        }
-        if (current.path !== nextPath) removed.push(current.path);
-        updates.path = nextPath;
+      if (typeof input.content === 'string' && input.content.startsWith('/media/')) {
+        throw new ApiError(400, 'Use o ID para reutilizar uma imagem local.');
       }
-      if (input.enabled !== undefined) updates.enabled = validate.boolean(input.enabled, 'images.enabled');
-      if (!Object.keys(updates).length) throw new ApiError(400, 'Imagem sem alterações.');
-      await current.update(updates, { transaction });
-    } else {
-      if (input.deleted) throw new ApiError(400, 'Imagem nova não pode ser excluída.');
-      if (typeof input.content === 'string' && input.content.startsWith('/media/')) throw new ApiError(400, 'Use o ID para reutilizar uma imagem local.');
-      const nextPath = await media.saveImage(input, created);
-      await ProductImage.create({ product_id: productId, enabled: input.enabled === undefined ? false : validate.boolean(input.enabled, 'images.enabled'), path: nextPath }, { transaction });
+
+      const path = await media.saveImage(input, created);
+      await ProductImage.create({
+        product_id: productId,
+        enabled: input.enabled === undefined ? false : validate.boolean(input.enabled, 'images.enabled'),
+        path
+      }, { transaction });
+      continue;
     }
+
+    const current = await ProductImage.findOne({
+      where: { id: validate.id(input.id, 'images.id'), product_id: productId },
+      transaction
+    });
+    if (!current) throw new ApiError(400, 'Imagem não pertence ao produto.');
+
+    if (input.deleted === true) {
+      await current.destroy({ transaction });
+      removed.push(current.path);
+      continue;
+    }
+
+    const updates = {};
+    if (input.content !== undefined) {
+      const reusedLocal = typeof input.content === 'string' && input.content.startsWith('/media/');
+      const nextPath = await media.saveImage(input, created);
+
+      // Não aceitamos reaproveitar uma imagem de outro produto pelo caminho.
+      if (reusedLocal && nextPath !== current.path) {
+        const owned = await ProductImage.findOne({
+          where: { product_id: productId, path: nextPath },
+          transaction
+        });
+        if (!owned) throw new ApiError(400, 'Imagem local informada não pertence a este produto.');
+      }
+
+      if (current.path !== nextPath) removed.push(current.path);
+      updates.path = nextPath;
+    }
+
+    if (input.enabled !== undefined) {
+      updates.enabled = validate.boolean(input.enabled, 'images.enabled');
+    }
+    if (!Object.keys(updates).length) throw new ApiError(400, 'Imagem sem alterações.');
+    await current.update(updates, { transaction });
   }
 }
+
 async function handleOptions(productId, incoming, transaction) {
   for (const input of incoming) {
-    if (input.id !== undefined) {
-      const current = await ProductOption.findOne({ where: { id: validate.id(input.id, 'options.id'), product_id: productId }, transaction });
-      if (!current) throw new ApiError(400, 'Opção não pertence ao produto.');
-      if (input.deleted === true) { await current.destroy({ transaction }); continue; }
-      const data = validate.optionPayload(input, true);
-      if (!Object.keys(data).length) throw new ApiError(400, 'Opção sem alterações.');
-      await current.update(data, { transaction });
-    } else {
+    if (input.id === undefined) {
       if (input.deleted) throw new ApiError(400, 'Opção nova não pode ser excluída.');
-      await ProductOption.create({ product_id: productId, ...validate.optionPayload(input) }, { transaction });
+      await ProductOption.create({
+        product_id: productId,
+        ...validate.optionPayload(input)
+      }, { transaction });
+      continue;
     }
+
+    const current = await ProductOption.findOne({
+      where: { id: validate.id(input.id, 'options.id'), product_id: productId },
+      transaction
+    });
+    if (!current) throw new ApiError(400, 'Opção não pertence ao produto.');
+
+    if (input.deleted === true) {
+      await current.destroy({ transaction });
+      continue;
+    }
+
+    const data = validate.optionPayload(input, true);
+    if (!Object.keys(data).length) throw new ApiError(400, 'Opção sem alterações.');
+    await current.update(data, { transaction });
   }
 }
+
 async function mutate(action, idValue, body, request) {
   const data = validate.productPayload(body, action === 'create');
   const { category_ids: categoryIds, images, options, ...productData } = data;
