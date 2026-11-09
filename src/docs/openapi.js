@@ -15,7 +15,7 @@ function mutation(summary, schema, responses, authenticated = true) {
 
 module.exports = {
   openapi: '3.0.3',
-  info: { title: 'Digital Store API', version: '1.0.0', description: 'Projeto acadêmico de Back-end da Digital College. Node.js, Express, Sequelize, MySQL, JWT e Jest. Cadastro e login são públicos; alterações exigem JWT.' },
+  info: { title: 'Digital Store API', version: '1.0.0', description: 'API da Digital Store para cadastro de usuários, categorias e produtos. Use o login para obter um JWT antes de criar, editar ou excluir categorias e produtos.' },
   servers: [{ url: 'http://localhost:3333', description: 'Ambiente local' }],
   tags: [{ name: 'Usuários' }, { name: 'Categorias' }, { name: 'Produtos' }, { name: 'Autenticação' }, { name: 'Sistema' }],
   components: {

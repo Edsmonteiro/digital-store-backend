@@ -1,11 +1,11 @@
-# Integração futura com o Front-end existente
+# Como conectar a API à loja React
 
 Front-end já publicado: https://digital-store-frontend-iota.vercel.app
 Repositório: https://github.com/Edsmonteiro/digital-store-frontend
 
-O Front-end atual utiliza um catálogo local (`src/data/products.js`) por decisão da etapa acadêmica anterior. **Ele não foi alterado por este projeto de Back-end.**
+A loja React ainda lê os produtos do arquivo `src/data/products.js`. Preferi manter essa parte como estava porque o Back-end foi uma atividade separada. Uma integração futura pode trocar esses dados locais pelas respostas da API, sem refazer as telas.
 
-## Como conectar posteriormente
+## Passos para uma integração futura
 
 1. Hospedar a API em ambiente que suporte Node.js e MySQL, configurar `PUBLIC_BASE_URL` e `CORS_ORIGIN` com o domínio do Front-end.
 2. Publicar o catálogo de demonstração executando `npm run db:seed` no banco persistente.
@@ -27,7 +27,7 @@ O Front-end atual utiliza um catálogo local (`src/data/products.js`) por decis�
 | `category` (texto) | `category_ids` | Resolver com `GET /v1/category/search` |
 | `brand`, `gender`, `featured`, `stars`, `rating`, `reference` | Não constam no contrato oficial | Manter defaults locais ou evoluir a API após o professor aprovar |
 
-A API segue o escopo de Back-end sem inventar colunas obrigatórias adicionais. Isso significa que **não existe integração automática completa** entre os dois projetos nesta versão.
+Alguns dados da loja, como marca e avaliação, não fazem parte da API exigida no curso. Antes de ligar os projetos, é preciso decidir de onde esses dados virão.
 
 ## Exemplo simples de leitura
 

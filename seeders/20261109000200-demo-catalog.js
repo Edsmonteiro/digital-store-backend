@@ -12,6 +12,18 @@ const items = [
   ['Bolsa Everyday', 3, 189.90, 149.90, 'produc-image-4.jpeg'],
   ['Boné Street', 3, 99.90, 79.90, 'produc-image-5.jpeg']
 ];
+const descriptions = [
+  'Tênis casual para usar com jeans, bermuda ou calça. Uma opção para quem prefere um visual mais básico.',
+  'Modelo com inspiração nos tênis de quadra, para combinar com roupas casuais.',
+  'Tênis com visual esportivo, que também funciona com looks do dia a dia.',
+  'Uma opção simples para quem gosta de tênis de lona e combinações mais descontraídas.',
+  'Tênis casual de linhas discretas, fácil de combinar com peças básicas.',
+  'Camiseta para quem gosta de roupas simples e de montar o próprio conjunto.',
+  'Camiseta de visual esportivo, para usar com short, calça ou bermuda.',
+  'Jaqueta para completar uma produção casual nos dias mais frescos.',
+  'Bolsa para levar os itens do dia a dia, sem abrir mão de um visual mais casual.',
+  'Boné para usar com camiseta, jaqueta ou o que mais combinar com você.'
+];
 const slugify = value => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 module.exports = {
   async up(queryInterface, Sequelize) {
@@ -28,9 +40,9 @@ module.exports = {
     const [categories] = await queryInterface.sequelize.query('SELECT id,slug FROM categories');
     const map = Object.fromEntries(categories.map(row => [row.slug, row.id]));
     const slugs = ['calcados', 'roupas', 'acessorios'];
-    const products = items.map(([name, group, price, price_with_discount]) => ({
+    const products = items.map(([name, group, price, price_with_discount], index) => ({
       enabled: true, name, slug: slugify(name), use_in_menu: group === 1,
-      stock: 20, description: `${name} para combinar com seu estilo no dia a dia.`,
+      stock: 20, description: descriptions[index],
       price, price_with_discount, created_at: now, updated_at: now
     }));
     await queryInterface.bulkInsert('products', products);

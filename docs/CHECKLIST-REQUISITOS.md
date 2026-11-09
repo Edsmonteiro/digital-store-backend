@@ -1,71 +1,57 @@
-# Conferência dos requisitos do repositório oficial
+# Conferência da atividade de Back-end
 
-Fonte: https://github.com/digitalcollegebr/projeto-backend
+Enunciado: https://github.com/digitalcollegebr/projeto-backend
 
-## Seção 01 — Banco de dados
+Usei esta lista para conferir o que foi pedido e registrar as diferenças que encontrei no enunciado.
 
-| Requisito | Implementação |
+## Banco de dados
+
+As seis tabelas da atividade estão na migration `20261109000100-initial-tables.js`:
+
+| Tabela | Dados principais |
 |---|---|
-| Usuários | `users`: id, firstname, surname, email, hash bcrypt, timestamps |
-| Categorias | `categories`: id, name, slug, use_in_menu, timestamps |
-| Produtos | `products`: id, enabled, name, slug, use_in_menu, stock, description, price, price_with_discount, timestamps |
-| Imagens | `product_images`: id, product_id, enabled, path |
-| Opções | `product_options`: id, product_id, title, shape, radius, type, values |
-| Produtos × categorias | `product_categories`: product_id, category_id, chave composta |
+| `users` | Nome, sobrenome, email e senha com hash |
+| `categories` | Nome, slug e exibição no menu |
+| `products` | Nome, slug, estoque, descrição e preços |
+| `product_images` | Imagens vinculadas ao produto |
+| `product_options` | Tamanho, cor e demais opções |
+| `product_categories` | Relação entre produtos e categorias |
 
-As seis tabelas são criadas com `migrations/20261109000100-initial-tables.js`. Todas as relações possuem chaves estrangeiras e exclusão em cascata quando o produto é removido. O banco é MySQL, via Sequelize.
+As ligações usam chaves estrangeiras. Ao excluir um produto, suas imagens, opções e vínculos com categorias também são removidos.
 
-## Seção 02 — Usuários
+## Endpoints
 
-- `GET /v1/user/:id` — consulta, sem expor a senha.
-- `POST /v1/user` — cadastro, `password` e `confirmPassword`, hash bcrypt.
-- `PUT /v1/user/:id` — atualização com JWT, somente o dono.
-- `DELETE /v1/user/:id` — exclusão com JWT, somente o dono.
+**Usuários:** `GET /v1/user/:id`, `POST /v1/user`, `PUT /v1/user/:id`, `DELETE /v1/user/:id` e `POST /v1/user/token`.
 
-## Seção 03 — Categorias
+**Categorias:** `GET /v1/category/search`, `GET /v1/category/:id`, `POST /v1/category`, `PUT /v1/category/:id` e `DELETE /v1/category/:id`.
 
-- `GET /v1/category/search` — `limit`, `page`, `fields`, `use_in_menu`.
-- `GET /v1/category/:id` — detalhe.
-- `POST /v1/category` — criação.
-- `PUT /v1/category/:id` — edição.
-- `DELETE /v1/category/:id` — exclusão.
+**Produtos:** `GET /v1/product/search`, `GET /v1/product/:id`, `POST /v1/product`, `PUT /v1/product/:id` e `DELETE /v1/product/:id`.
 
-## Seção 04 — Produtos
+O cadastro de produtos aceita categorias, imagens e opções. Na atualização também é possível remover uma imagem ou opção usando `deleted: true`. As buscas têm paginação e os filtros descritos no [README](../README.md).
 
-- `GET /v1/product/search` — `limit`, `page`, `fields`, `match`, `category_ids`, `price-range`, `option[id]`.
-- `GET /v1/product/:id` — retorna categoria, imagens e opções.
-- `POST /v1/product` — cria produto e associações em transação.
-- `PUT /v1/product/:id` — altera atributos, categorias, imagens e opções, inclusive `deleted:true` para exclusão parcial.
-- `DELETE /v1/product/:id` — exclui produto e relações.
+## Autenticação
 
-## Seção 05 — JWT
+O login devolve um JWT. Cadastro e login são públicos; para criar, editar ou excluir categorias e produtos é preciso informar o token. Usuários só podem editar ou excluir a própria conta.
 
-- `POST /v1/user/token` — autentica por email/senha e retorna `{ "token": "..." }`.
-- Proteção JWT Bearer nas alterações de categorias e produtos; em usuário, aplica autorização apenas ao titular.
-- Cadastro de usuário e geração do token ficam públicos necessariamente para permitir o primeiro acesso.
+A senha é armazenada com bcrypt e não é devolvida nas consultas.
 
-## Divergências e decisões explícitas
+## Escolhas que vale explicar
 
-1. A especificação menciona `400` se faltar token, mas também pede `401` em vários endpoints protegidos. Esta implementação utiliza **401**, mais apropriado para ausência ou invalidade de credenciais. A autorização de outra conta retorna **403**.
-2. Alguns exemplos da documentação original têm JSON inválido (vírgula final, objetos sem vírgula), e alternam entre `value` e `values` nas opções. A API aceita ambos na entrada e normaliza para `values` na resposta.
-3. Imagens base64 são gravadas em `/public/media` com caminho relativo em `path`. Também são aceitas URLs HTTPS, o que permite os assets públicos da Digital College.
-4. `radius` é INTEGER no MySQL. A API aceita `4` e `"4px"` no payload, convertendo este último para 4.
-5. `price_with_discount: 0` indica ausência de promoção, como nos exemplos oficiais.
-6. O contrato de Back-end não define marca, gênero nem avaliação. Esses campos do Front-end atual não foram adicionados ao esquema acadêmico.
-7. A documentação exige FLOAT para os preços; o modelo preserva FLOAT. Em sistemas financeiros reais, DECIMAL seria preferível.
+- **Status HTTP:** o enunciado usa tanto 400 quanto 401 para token ausente. A API retorna 401 para falta de autenticação e 403 quando o usuário tenta alterar outra conta.
+- **Opções de produto:** alguns exemplos trazem `value`, outros `values`. O código aceita os dois na entrada e responde com `values`.
+- **Raio das opções:** aceita `4` e `"4px"`, guardando o número no banco.
+- **Preços:** mantive FLOAT, como solicitado. Em um sistema financeiro de produção, escolheria DECIMAL.
+- **Campos extras da loja:** marca, gênero e avaliação existem no catálogo do React, mas não foram acrescentados ao banco porque não fazem parte do contrato da atividade.
+- **Imagens:** a API aceita base64 e URLs HTTPS. Imagens enviadas em base64 ficam em `public/media`.
 
-## Requisitos de qualidade
+## O que foi validado
 
-- Separação por `routes`, `controllers`, `services`, `models`, `middleware` e `utils`.
-- Tratamento padronizado de erros com status HTTP corretos.
-- Swagger UI em `/api-docs`, OpenAPI JSON em `/openapi.json`.
-- Jest e Supertest em `tests/`, testes com banco real habilitados por `RUN_DB_TESTS=1`.
-- GitHub Actions com MySQL 8.4, migrations e testes.
-- Arquivo `.env.example` e README com passo a passo.
+- Migration executada em MySQL 8.4.
+- Seed com produtos de exemplo.
+- Fluxo completo de usuários, categorias e produtos em testes de integração.
+- Testes automatizados com Jest e Supertest.
+- Swagger disponível em `/api-docs` e especificação em `/openapi.json`.
+- GitHub Actions executando migrations e testes.
+- Repositório público com `.env` ignorado.
 
-## Validação ainda necessária
-
-- Instalar dependências com npm.
-- Executar migrations e Jest em ambiente com MySQL disponível.
-- Confirmar todos os testes e Swagger no Windows antes da entrega.
-- Criar e publicar o repositório GitHub do Back-end.
+O projeto ainda não possui deploy próprio da API. Isso não impede executar e testar o Back-end localmente, conforme o exercício.

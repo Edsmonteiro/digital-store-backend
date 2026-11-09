@@ -1,144 +1,84 @@
 # Digital Store — Back-end
 
-API REST para o projeto final de Back-end da **Digital College**, desenvolvida por **Edson Monteiro**. O projeto implementa cadastro e gerenciamento de usuários, categorias e produtos, com autenticação JWT e banco MySQL.
+Este é o Back-end que desenvolvi para a atividade de Node.js da Digital College. A proposta foi criar uma API para cadastrar usuários, categorias e produtos, guardar as informações no MySQL e proteger as operações de edição com JWT.
 
-**Referência da atividade:** [digitalcollegebr/projeto-backend](https://github.com/digitalcollegebr/projeto-backend)  
-**Front-end já publicado:** [Digital Store na Vercel](https://digital-store-frontend-iota.vercel.app)  
-**Repositório do Front-end:** [Edsmonteiro/digital-store-frontend](https://github.com/Edsmonteiro/digital-store-frontend)  
-**Prazo acadêmico:** 20/11/2026
+O projeto é separado da [loja em React](https://digital-store-frontend-iota.vercel.app), que continua usando um catálogo local.
 
-## Tecnologias
+**Atividade:** [digitalcollegebr/projeto-backend](https://github.com/digitalcollegebr/projeto-backend)  
+**Front-end:** [código no GitHub](https://github.com/Edsmonteiro/digital-store-frontend)  
+**Desenvolvido por:** Edson Monteiro
 
-Node.js 20+, Express.js, MySQL 8, Sequelize ORM, Sequelize CLI (migrations), JWT, bcrypt, Jest, Supertest, Swagger UI, Dotenv e Nodemon. O MySQL pode ser executado localmente por Docker Compose.
+## Como organizei o projeto
 
-## Preparando o projeto (Windows / VS Code)
+Usei Node.js, Express, MySQL e Sequelize. As rotas recebem as requisições, os controllers cuidam das respostas HTTP e os services concentram o acesso aos dados e as regras do cadastro.
 
-**Pré-requisitos:** Node.js 20 ou superior, npm e MySQL 8.4 (ou Docker Desktop com Docker Compose).
+O banco tem as seis tabelas pedidas no exercício: `users`, `categories`, `products`, `product_images`, `product_options` e `product_categories`. A estrutura é criada por uma migration, sem `sequelize.sync()`.
 
-1. Abra o terminal do VS Code dentro da pasta `digital-store-backend`.
-2. Instale as dependências:
+Para autenticação, usei bcrypt para armazenar as senhas e JWT para autorizar alterações. A API também tem documentação Swagger e testes com Jest e Supertest.
 
-   ```powershell
-   npm install
-   ```
+## Rodando no Windows
 
-3. Crie o arquivo de configuração copiando o exemplo:
+É necessário ter Node.js 20 ou superior e MySQL 8. O `docker-compose.yml` já configura um MySQL 8.4 para desenvolvimento.
 
-   ```powershell
-   Copy-Item .env.example .env
-   ```
+No terminal, dentro da pasta do projeto:
 
-4. Se for utilizar Docker, inicie o banco:
-
-   ```powershell
-   docker compose up -d
-   ```
-
-5. Edite o `.env` e coloque `DB_PASSWORD=local_dev_password` (somente para o Docker local indicado). Configure `JWT_SECRET` com um segredo aleatório de pelo menos 32 caracteres; nunca suba o `.env` ao GitHub. Se utilizar MySQL instalado diretamente, configure seu usuário, senha e banco no `.env`.
-6. Crie as seis tabelas usando migrations e, opcionalmente, carregue as dez demonstrações da Digital Store:
-
-   ```powershell
-   npm run db:migrate
-   npm run db:seed
-   ```
-
-7. Inicie o servidor:
-
-   ```powershell
-   npm run dev
-   ```
-
-A API será iniciada em `http://localhost:3333`. Acesse:
-
-- **Documentação interativa Swagger:** http://localhost:3333/api-docs
-- **Arquivo OpenAPI:** http://localhost:3333/openapi.json
-- **Health check:** http://localhost:3333/health
-
-Os dados de demonstração incluem as três categorias e dez produtos usados como referência no Front-end. A seed depende de conexão à internet para exibir as imagens, hospedadas no GitHub público da Digital College.
-
-## Autenticação
-
-Crie um usuário em `POST /v1/user` com `firstname`, `surname`, `email`, `password` e `confirmPassword` (mínimo de oito caracteres). Em seguida, envie email e senha para `POST /v1/user/token`.
-
-Exemplo de resposta:
-
-```json
-{ "token": "SEU_JWT_AQUI" }
+```powershell
+npm install
+Copy-Item .env.example .env
+docker compose up -d
 ```
 
-No Swagger, clique em **Authorize**, informe o JWT e teste os endpoints protegidos. Fora do Swagger, utilize o cabeçalho:
+No arquivo `.env`, altere `DB_PASSWORD` para `local_dev_password` se estiver usando o Docker deste repositório. Também troque `JWT_SECRET` por uma chave aleatória com pelo menos 32 caracteres.
+
+Depois:
+
+```powershell
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+A seed é opcional e coloca três categorias e dez produtos de exemplo no banco. As imagens são carregadas a partir do repositório público da Digital College.
+
+Com o servidor iniciado:
+
+- **Swagger:** http://localhost:3333/api-docs
+- **OpenAPI em JSON:** http://localhost:3333/openapi.json
+- **Verificação da API:** http://localhost:3333/health
+
+O `.env` fica fora do Git. O arquivo `.env.example` serve apenas como modelo.
+
+## Rotas disponíveis
+
+| Método | Rota | O que faz |
+|---|---|---|
+| GET | `/v1/user/:id` | Busca um usuário, sem retornar a senha |
+| POST | `/v1/user` | Cadastra usuário |
+| PUT | `/v1/user/:id` | Atualiza a própria conta |
+| DELETE | `/v1/user/:id` | Exclui a própria conta |
+| POST | `/v1/user/token` | Faz login e devolve um JWT |
+| GET | `/v1/category/search` | Lista e filtra categorias |
+| GET | `/v1/category/:id` | Busca uma categoria |
+| POST | `/v1/category` | Cria categoria |
+| PUT | `/v1/category/:id` | Edita categoria |
+| DELETE | `/v1/category/:id` | Exclui categoria |
+| GET | `/v1/product/search` | Pesquisa produtos |
+| GET | `/v1/product/:id` | Busca produto e suas relações |
+| POST | `/v1/product` | Cadastra produto, imagens, opções e categorias |
+| PUT | `/v1/product/:id` | Atualiza produto e relações |
+| DELETE | `/v1/product/:id` | Exclui produto |
+
+A busca de produtos aceita `match`, `category_ids`, `price-range`, `option[id]`, `fields`, `limit` e `page`. Para categorias, há `use_in_menu`, `fields`, `limit` e `page`. A listagem retorna `data`, `total`, `limit` e `page`; com `limit=-1`, retorna todos os registros.
+
+Cadastro e login não precisam de token. Para editar ou excluir dados, envie o JWT no cabeçalho:
 
 ```text
-Authorization: Bearer SEU_JWT_AQUI
+Authorization: Bearer SEU_TOKEN
 ```
 
-Cadastro e login são públicos. A edição e a exclusão de usuários exigem autenticação do próprio titular. A escrita de categorias e produtos também exige JWT.
+Para começar, crie o usuário em `POST /v1/user` com `firstname`, `surname`, `email`, `password` e `confirmPassword`. Depois use `POST /v1/user/token` com email e senha. No Swagger, o botão **Authorize** permite informar o token.
 
-## Endpoints oficiais
-
-| Método | Rota | Finalidade | JWT |
-|---|---|---|---|
-| GET | `/v1/user/:id` | Detalhar usuário | Não |
-| POST | `/v1/user` | Cadastrar usuário | Não |
-| PUT | `/v1/user/:id` | Atualizar próprio usuário | Sim |
-| DELETE | `/v1/user/:id` | Excluir próprio usuário | Sim |
-| POST | `/v1/user/token` | Gerar token JWT | Não |
-| GET | `/v1/category/search` | Pesquisar categorias | Não |
-| GET | `/v1/category/:id` | Detalhar categoria | Não |
-| POST | `/v1/category` | Criar categoria | Sim |
-| PUT | `/v1/category/:id` | Atualizar categoria | Sim |
-| DELETE | `/v1/category/:id` | Excluir categoria | Sim |
-| GET | `/v1/product/search` | Pesquisar produtos | Não |
-| GET | `/v1/product/:id` | Detalhar produto | Não |
-| POST | `/v1/product` | Criar produto com imagens, opções e categorias | Sim |
-| PUT | `/v1/product/:id` | Atualizar produto e relações | Sim |
-| DELETE | `/v1/product/:id` | Excluir produto | Sim |
-
-### Pesquisa e paginação
-
-**Categorias:** `?limit=12&page=1&fields=name,slug&use_in_menu=true`.  
-**Produtos:** `?limit=12&page=1&match=Tênis&category_ids=1,2&price-range=100-400&option[45]=P,M&fields=name,images,price`.
-
-`limit=-1` retorna todos os itens e ignora a paginação. Para paginação normal, o limite máximo é 100 por página. As respostas de busca seguem o formato `{ data, total, limit, page }`.
-
-### Corpo de um produto
-
-```json
-{
-  "enabled": true,
-  "name": "Tênis Street Move",
-  "slug": "tenis-street-move",
-  "stock": 10,
-  "description": "Tênis confortável para o dia a dia",
-  "price": 299.90,
-  "price_with_discount": 219.90,
-  "category_ids": [1],
-  "images": [
-    {
-      "type": "image/png",
-      "content": "BASE64_DA_IMAGEM",
-      "enabled": true
-    }
-  ],
-  "options": [
-    {
-      "title": "Tamanho",
-      "shape": "square",
-      "radius": "4px",
-      "type": "text",
-      "values": ["P", "M", "G"]
-    }
-  ]
-}
-```
-
-Na atualização, objetos de `images` e `options` com `id` permitem edição ou exclusão usando `"deleted": true`. Alterações compostas são efetuadas em transações. Imagens em base64 viram arquivos em `public/media`; também são aceitas URLs HTTPS. A pasta de mídia deve ser persistente caso o projeto seja hospedado.
-
-## Banco de dados
-
-Modelos e migration criam exatamente as seis tabelas indicadas no escopo: `users`, `categories`, `products`, `product_images`, `product_options` e `product_categories`. Os vínculos são implementados com chaves estrangeiras e associações Sequelize.
-
-O projeto **não usa `sequelize.sync()` para criar tabelas**: o esquema é gerenciado por migrations versionadas, conforme solicitado. Use `npm run db:migrate:undo` para desfazer a última migration local quando necessário.
+As imagens podem ser enviadas em base64 ou como URL HTTPS. Arquivos enviados ficam em `public/media`; em uma hospedagem real, essa pasta precisaria de armazenamento persistente. Na atualização, é possível informar `id` e `deleted: true` para remover imagens ou opções existentes.
 
 ## Testes
 
@@ -147,60 +87,25 @@ npm run check
 npm test
 ```
 
-`npm run check` verifica a sintaxe de todos os arquivos JavaScript. Os testes Jest básicos não exigem MySQL. Para executar os testes de integração reais, crie previamente o banco `digital_store_test` e configure `DB_TEST_NAME`, `DB_USER` e `DB_PASSWORD` no ambiente de teste. No PowerShell:
+O teste de integração usa um banco separado, para não mexer nos produtos cadastrados durante o desenvolvimento. Crie o banco `digital_store_test`, dê acesso ao usuário do MySQL e, no **mesmo terminal PowerShell**, execute:
 
 ```powershell
-$env:NODE_ENV="test"
-$env:RUN_DB_TESTS="1"
+$env:NODE_ENV = "test"
+$env:RUN_DB_TESTS = "1"
+$env:DB_TEST_NAME = "digital_store_test"
 npm run db:migrate
 npm run test:integration
-Remove-Item Env:\RUN_DB_TESTS
-Remove-Item Env:\NODE_ENV
+Remove-Item Env:\NODE_ENV,Env:\RUN_DB_TESTS,Env:\DB_TEST_NAME -ErrorAction SilentlyContinue
 ```
 
-O GitHub Actions em `.github/workflows/test.yml` configura MySQL 8.4 automaticamente, executa migrations e todos os testes a cada push e Pull Request.
+O [GitHub Actions](https://github.com/Edsmonteiro/digital-store-backend/actions) também executa migrations e testes com MySQL 8.4 a cada atualização do repositório.
 
-## Estrutura do código
+## Observações
 
-```text
-src/
-  config/           MySQL, Sequelize e variáveis de ambiente
-  controllers/      Camada HTTP e códigos de resposta
-  docs/             Especificação OpenAPI/Swagger
-  middleware/       JWT, Content-Type e erros
-  models/           Seis modelos e associações
-  routes/           Mapeamento dos endpoints /v1
-  services/         Regras de negócio e persistência
-  utils/            Validação e erros
-  app.js            Configuração do Express
-  server.js         Inicialização do servidor
-migrations/          Criação versionada das tabelas
-seeders/             Dez produtos demonstrativos
-public/media/        Imagens enviadas em base64
-tests/               Jest/Supertest, incluindo integração
-.github/workflows/   CI com MySQL e testes
-```
+O Back-end cumpre a parte de API do exercício, mas ainda não está conectado à loja React. Deixei anotado o que seria necessário para essa etapa em [docs/INTEGRACAO-FRONTEND.md](docs/INTEGRACAO-FRONTEND.md).
 
-## Integração com o Front-end
+Em [docs/CHECKLIST-REQUISITOS.md](docs/CHECKLIST-REQUISITOS.md) estão os requisitos da atividade e algumas escolhas de implementação, como a resposta HTTP 401 para token ausente.
 
-O Front-end original permanece funcionando com o catálogo local; não foi substituído neste trabalho. A API foi criada separadamente e inclui uma seed de referência para permitir uma futura integração com a aplicação React. Veja [o mapeamento necessário](docs/INTEGRACAO-FRONTEND.md).
+O código foi pensado para a atividade. Se fosse usado por uma loja real, ainda precisaria de controles adicionais de acesso, limites de requisição e armazenamento adequado das imagens.
 
-## Requisitos e decisões técnicas
-
-Confira [o checklist completo](docs/CHECKLIST-REQUISITOS.md), incluindo todos os endpoints oficiais, regras de banco, autenticação e eventuais ambiguidades na documentação do curso.
-
-Este é um projeto educacional. Para uso comercial, seriam necessários reforços de segurança, política de armazenamento de mídia persistente, observabilidade, controle de papéis e proteção contra abuso.
-
-## Publicação no GitHub
-
-O repositório do Back-end deve ser **separado** do Front-end, para não alterar a entrega já publicada. O nome recomendado é `Edsmonteiro/digital-store-backend`.
-
-Com Git e GitHub CLI autenticados no Windows, execute dentro da pasta deste projeto:
-
-```powershell
-.\scripts\publicar-github.ps1
-```
-
-Se a política do PowerShell bloquear scripts, copie os comandos do arquivo e execute-os manualmente em vez de desativar a proteção global do sistema. Este script cria o repositório **somente se ainda não existir** e não reescreve branches existentes.
-
-**Importante:** antes de enviar o link ao professor, confira se os testes do GitHub Actions terminaram com sucesso e se os secrets do `.env` não aparecem nos commits.
+Prazo da atividade: 20/11/2026.
