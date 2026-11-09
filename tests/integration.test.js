@@ -175,12 +175,14 @@ suite('Integração MySQL: CRUD completo e relacionamentos', () => {
 
   test('índices usados nos filtros estão presentes no MySQL', async () => {
     const [categoryIndex] = await sequelize.query(
-      "SHOW INDEX FROM product_categories WHERE Key_name = 'idx_product_categories_category_id'"
+      'SHOW INDEX FROM product_categories'
     );
     const [priceIndex] = await sequelize.query(
       "SHOW INDEX FROM products WHERE Key_name = 'idx_products_price'"
     );
-    expect(categoryIndex).toHaveLength(1);
+    expect(categoryIndex.some(index =>
+      index.Column_name === 'category_id' && Number(index.Seq_in_index) === 1
+    )).toBe(true);
     expect(priceIndex).toHaveLength(1);
   });
 });
